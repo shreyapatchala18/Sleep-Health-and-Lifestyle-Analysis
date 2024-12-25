@@ -1,0 +1,183 @@
+---
+title: "Sleep Health and Lifestyle"
+author: "Exploring How Sleep Disorders Relate to Stress Levels and Sleep Duration Across Age Groups"
+format:
+  pdf:
+    colorlinks: true
+    fig_caption: true
+    include-in-header: |
+      \usepackage{titling}
+      \pretitle{\begin{center}\fontsize{12pt}{14pt}\selectfont}
+      \posttitle{\end{center}\vspace{-0.5cm}}  # Adjust space after title
+      \preauthor{\begin{center}\fontsize{9pt}{12pt}\selectfont}
+      \postauthor{\end{center}\vspace{-0.3cm}}  # Adjust space after author
+    geometry: margin=0.5cm  # Reduced margins to fit more on the page
+editor: visual
+---
+
+```{r, echo=FALSE}
+suppressMessages(library(tidyverse))
+suppressMessages(library(ggplot2))
+suppressMessages(library(patchwork))
+suppressMessages(library(dplyr))
+suppressMessages(library(tidyr))
+suppressMessages(library(gghighlight))
+```
+
+```{r, include=FALSE, warning=FALSE}
+# Loading the dataset
+health <- read_csv("Sleep_health_and_lifestyle_dataset.csv")
+```
+
+```{r, include=FALSE}
+head(health)
+```
+
+```{r, include=FALSE}
+dim(health)
+```
+
+```{r, include=FALSE}
+glimpse(health)
+```
+
+```{r, include=FALSE}
+# Total count of duplicated rows in the data frames
+sum(duplicated(health))
+```
+
+```{r, include=FALSE}
+# Count the NA values
+sum(is.na(health))
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.align='center', fig.width= 7, fig.height=3}
+# Colors for Sleep Disorder categories
+sleep_disorder_colors <- c("Insomnia" = "violetred", "None" = "seagreen3", "Sleep Apnea" = "steelblue3")
+
+# Box Plot
+boxplot2 <- ggplot(health, aes(x = `Sleep Disorder`, y = `Stress Level`)) +
+  geom_boxplot(aes(fill = `Sleep Disorder`)) +
+  scale_fill_manual(values = sleep_disorder_colors) + 
+  labs(x = "Sleep Disorder", y = "Stress Level") +  
+  theme_bw() +  
+  theme(text = element_text(size = 14),  
+        axis.text = element_text(size = 7),
+        axis.title = element_text(size = 7),
+        legend.position = "none")  
+
+# Density Plot
+density_plot2 <- ggplot(health, aes(x = `Stress Level`, color = `Sleep Disorder`)) +
+  geom_density(linewidth = 0.5, alpha = 0) + 
+  scale_color_manual(values = sleep_disorder_colors) +  
+  labs(x = "Stress Level", y = "Density") +  
+  scale_y_continuous(expand = c(0, 0)) + 
+  theme_bw() + 
+  theme(text = element_text(size = 10),
+        axis.text = element_text(size = 7),
+        axis.title = element_text(size = 7),
+        legend.position = "bottom",  
+        legend.direction = "horizontal", 
+        legend.text = element_text(size = 8),
+        legend.title = element_text(size = 8),
+        legend.box.margin = margin(t = 0, r = 65, b = 0, l = 0),  
+        plot.margin = margin(t = 0, r = 10, b = 10, l = 10)) +  
+  annotate("rect", xmin = 3.1, xmax = 6.5, ymin = 0.29, ymax = 0.38, alpha = 0.2, fill = "white", color = "black") +  
+  annotate("text", x = 4.8, y = 0.34, label = "Insomnia is associated\n with higher stress levels", size = 3, color = "black", hjust = 0.5, vjust = 0.5)  
+
+# Combining the Box Plot and Density Plot side by side using patchwork
+combined_plot <- boxplot2 + density_plot2 + plot_layout(ncol = 2)
+
+final_plot <- combined_plot + 
+  plot_annotation(title = "Stress Level and Sleep Disorder: Distribution and Density") & 
+  theme(plot.title = element_text(size = 10, hjust = 0.5)) 
+
+print(final_plot)
+
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.align='center', fig.width= 6.6, fig.height=2}
+# Line Plot
+line_plot <- health %>%
+  group_by(`Sleep Duration`, `Sleep Disorder`) %>%
+  summarise(avg_stress = mean(`Stress Level`, na.rm = TRUE), .groups = "drop") %>%
+  ggplot(aes(x = `Sleep Duration`, y = avg_stress, color = `Sleep Disorder`)) +
+  geom_line(linewidth = 0.5) +  
+  scale_color_manual(values = c("Insomnia" = "violetred", "None" = "seagreen3", "Sleep Apnea" = "steelblue3")) +  
+  labs(title = "Average Stress Level by Sleep Duration and Sleep Disorder", 
+       x = "Sleep Duration (hours)", 
+       y = "Average Stress Level") +
+  theme_bw() +
+  theme(text = element_text(size = 10),
+        plot.title = element_text(hjust = 0.5, size = 10),
+        axis.text = element_text(size = 8),
+        axis.title = element_text(size = 8),
+        legend.position = "none") + 
+  gghighlight(`Sleep Disorder` == "Insomnia" | `Sleep Disorder` == "None" | `Sleep Disorder` == "Sleep Apnea", 
+              label_params = list(size = 2)) +
+  annotate("rect", xmin = 7.1, xmax = 8.05, ymin = 6.7, ymax = 8.1, 
+           alpha = 0.2, fill = "white", color = "black") +  
+  annotate("text", x = 7.2, y = 7.4, size = 3, label = "As sleep duration increases,\nstress levels tend to decrease", 
+           color = "black", hjust = 0)
+
+print(line_plot)
+
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.align='center', fig.width=7, fig.height=2.6}
+sleep_disorder_colors <- c("Insomnia" = "violetred", "None" = "seagreen3", "Sleep Apnea" = "steelblue3")
+
+# Dividing Age into 4 buckets (age groups)
+health <- health %>%
+  mutate(Age_Group = cut(Age, 
+                         breaks = 4, 
+                         labels = c("Young", "Middle-Aged", "Older Adult", "Senior")))
+
+# Calculating average Sleep Duration and Stress Level by Age Group and Sleep Disorder
+avg_sleep_stress_age_group <- health %>%
+  group_by(Age_Group, `Sleep Disorder`) %>%
+  summarise(avg_sleep_duration = mean(`Sleep Duration`, na.rm = TRUE),
+            avg_stress_level = mean(`Stress Level`, na.rm = TRUE), .groups = "drop")
+
+avg_long_sleep_stress <- avg_sleep_stress_age_group %>%
+  pivot_longer(cols = c(avg_sleep_duration, avg_stress_level),
+               names_to = "Measure", values_to = "Value")
+
+custom_labels <- c(avg_sleep_duration = "Average Sleep Duration", avg_stress_level = "Average Stress Level")
+
+# Stacked Bar Plot
+bar_sleep_stress_age_group_plot <- ggplot(avg_long_sleep_stress, aes(x = Age_Group, y = Value, fill = `Sleep Disorder`)) +
+  geom_bar(stat = "identity", position = "stack") +  
+  scale_fill_manual(values = sleep_disorder_colors) +  
+  facet_wrap(~ Measure, scales = "free_y", labeller = labeller(Measure = custom_labels)) +  
+  labs(title = "Average Sleep Duration and Stress Level by Age Group and Sleep Disorder", 
+       x = "Age Group", y = "Average Value", fill = "Sleep Disorder") +
+  theme_bw() +
+  theme(text = element_text(size = 12),  
+        plot.title = element_text(size = 10, hjust = 0.5),  
+        strip.text = element_text(size = 9),  
+        axis.text = element_text(size = 8),
+        axis.title = element_text(size = 9),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.text = element_text(size = 9),
+        legend.title = element_text(size = 10),
+        legend.position = "right")
+
+annotation_text <- "Young and Middle-Aged individuals with Insomnia consistently show the highest levels of stress\nand relatively shorter sleep durations compared to other sleep disorders."
+
+# Combining the plot and annotation using patchwork
+final_plot <- bar_sleep_stress_age_group_plot + plot_annotation(caption = annotation_text) & 
+  theme(plot.caption = element_text(hjust = 0.5, size = 8))
+
+print(final_plot)
+
+```
+
+```{=tex}
+\vfill
+\begin{flushright}
+\small \url{https://www.kaggle.com/datasets/uom190346a/sleep-health-and-lifestyle-dataset/data}
+\end{flushright}
+```
